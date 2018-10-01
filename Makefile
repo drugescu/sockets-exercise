@@ -2,7 +2,7 @@ TARGET ?= server.out
 TARGET2 ?= client.out
 SRC_DIRS ?= ./src
 
-SRCS := $(shell find $(SRC_DIRS) -name *.cpp -or -name server*.c -or -name *.s)
+SRCS := $(shell find $(SRC_DIRS) -name *.cpp -or -name server*.c -or -name map*.c -or -name *.s)
 OBJS := $(addsuffix .o,$(basename $(SRCS)))
 DEPS := $(OBJS:.o=.d)
 
@@ -19,11 +19,13 @@ OFLAGS := -pthread -lpthread -Wall
 
 OTHERLIBS := -lrt
 
+DEBUG := -g
+
 $(TARGET): $(OBJS)
-	$(CC) $(LDFLAGS) $(OFLAGS) $(OBJS) -o $@ $(LOADLIBES) $(LDLIBS) $(OTHERLIBS)
+	$(CC) $(DEBUG) $(LDFLAGS) $(OFLAGS) $(OBJS) -o $@ $(LOADLIBES) $(LDLIBS) $(OTHERLIBS)
 
 $(TARGET2): $(OBJS2)
-	$(CC) $(LDFLAGS) $(OFLAGS) $(OBJS2) -o $@ $(LOADLIBES) $(LDLIBS) $(OTHERLIBS)
+	$(CC) $(DEBUG) $(LDFLAGS) $(OFLAGS) $(OBJS2) -o $@ $(LOADLIBES) $(LDLIBS) $(OTHERLIBS)
 
 .PHONY: clean
 clean:

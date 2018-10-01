@@ -11,5 +11,6 @@ Server and client apps that send files through sockets.
 
 ### Client
 * Establishes connection to the server and sends requests for various files.
+* Connection is requested to server TCP port argv[1].
 * A request is a filename, assumed directory-less (root dir of server).
 * Saves the file being sent to it by the server.
