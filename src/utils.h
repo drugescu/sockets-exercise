@@ -22,6 +22,7 @@
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/sendfile.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <assert.h>
@@ -32,11 +33,17 @@
 
 #include "map.h"
 
-#define BUF_SIZE        1024
-#define NAME_SIZE         64
-#define MAX_CLIENTS       12
+//#define DEBUG
 
-#define CLOSE_MESSAGE   "[REQUESTING_DISCONNECT]"
+// 2GB Max file size
+#define MAX_FILE_SIZE  (1<<31)
+#define BUF_SIZE          1024
+#define NAME_SIZE          255
+#define MAX_CLIENTS         12
+
+#define CLOSE_MESSAGE       "[REQUESTING_DISCONNECT]"
+
+#define COMMAND_SEPARATOR   "\t"
 
 typedef struct sockaddr_in sai_t;
 typedef struct sockaddr sa_t;

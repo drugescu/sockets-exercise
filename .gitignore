@@ -53,3 +53,8 @@ dkms.conf
 
 # Geany project file
 geany_proj
+
+# Test files
+file*
+file*.*
+received_*

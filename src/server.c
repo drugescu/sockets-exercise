@@ -60,6 +60,35 @@ void initialize() {
     memset(&buffer, 0, BUF_SIZE);
 }
 
+// Sends a file to a socket
+void send_file(int sock, char filename[ NAME_SIZE ]) {
+    struct stat filestat;
+    char filesize[ NAME_SIZE ] = { 0 };
+
+    // Get file name stat
+    stat(filename, &filestat);
+
+    sprintf(filesize, "%lu", (unsigned long) filestat.st_size);
+
+    printf("File has size %lu.\n", (unsigned long) filestat.st_size);
+
+    // Send file size
+    send(sock, filesize, strlen(filesize) , 0 );
+    // Endure command ending
+    send(sock, COMMAND_SEPARATOR, strlen(COMMAND_SEPARATOR) , 0 );
+
+    // Open file for reading
+    int ifile;
+    ifile = open(filename, O_RDONLY);
+
+    // Now send file
+    int rc;
+    rc = sendfile(sock, ifile, NULL, (unsigned long) filestat.st_size);
+    DIE(rc == -1, "Send file error.");
+
+    printf("File has been sent.\n");
+}
+
 // Establish new connection with client on socket sockfd
 void new_connection(int sockfd) {
     // Default action, accept connection
@@ -96,6 +125,8 @@ void new_connection(int sockfd) {
     // Now we can safely delete the temporary client_t, the hashmap makes a copy
     free(new_client);
     new_client = NULL;
+
+    printf("-- New connection done. \n");
 }
 
 // Treat request for file from socket sockfd
@@ -108,14 +139,10 @@ void receive_request(int sockfd) {
     client_t *val;
 
     val = *map_get(&clients, client_key);
-    printf("Map get on client key \"%s\".\n", client_key);
     if (val == NULL) {
         printf("Client NOT in hashmap.\n");
 
         return;
-    }
-    else {
-        printf("Client in hashmap.\n");
     }
 
     // Clear buffer
@@ -124,13 +151,30 @@ void receive_request(int sockfd) {
     // Request can be for a name of a file, send the file then close connection.
     int rc;
     rc = read(sockfd, buffer, BUF_SIZE);
-    if (!strlen(buffer))
+    if (!strlen(buffer)) {
+        printf("Error: request is empty.\n");
+
+        // Now close the socket
+        map_remove(&clients, client_key);
+        close(sockfd);
+        FD_CLR(sockfd, &read_fds);
+
         return;
+    }
 
-    printf("Received request \"%s\" on socket %d.\n", buffer, sockfd);
+    printf("Client in hashmap.\n");
+    printf("Received request(s) \"%s\" on socket %d.\n", buffer, sockfd);
 
-    // If the request is to close the message
-    if (strcmp(CLOSE_MESSAGE, buffer) == 0) {
+    // Process requests - defined by the simple protocol << \n is separator >>
+    char *filetoken = NULL;
+    char *dmessage = NULL;
+
+    // Tokenize by newline
+    filetoken = strtok(buffer, COMMAND_SEPARATOR);
+    DIE(filetoken == NULL, "Null token in received message (strtok)");
+
+    if (strcmp(filetoken, CLOSE_MESSAGE) == 0) {
+        // Now kill the connection
         // Delete client from hashmap
         map_remove(&clients, client_key);
 
@@ -140,7 +184,12 @@ void receive_request(int sockfd) {
 
         printf("Removed client from records and closed its socket.\n");
     }
+    else { // Request must be for a file
+        printf("Request for file \"%s\", preparing to send.\n", filetoken);
 
+        // Send file here
+        send_file(sockfd, filetoken);
+    }
 }
 
 // Listen to incoming client requests
