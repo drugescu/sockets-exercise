@@ -43,6 +43,34 @@ void send_request(int socket, char *filename) {
     send(sock, COMMAND_SEPARATOR, strlen(COMMAND_SEPARATOR) , 0 );
 }
 
+// Call this function each iteration of a work function for updating
+void update_progress(int count, int size) {
+    float progress = 0.0f;
+    int bar_width = 70;
+    int current_pos;
+    int pos = 0;
+
+    printf("[");
+
+    // Generate new progress percentage
+    progress = (float) count / size;
+    pos = bar_width * progress;
+
+    // Print progress
+    for (current_pos = 0; current_pos < bar_width; current_pos++) {
+        if (current_pos < pos)
+            printf("=");
+        else if (current_pos == pos)
+            printf(">");
+        else
+            printf(" ");
+    }
+
+    // Flush to keep same line
+    printf("] %d%%\r", (int)(progress * 100));
+    fflush(stdout);
+}
+
 // Creates file, receives length, then receives until length bytes read.
 void recv_file(int socket, char* filename) {
     unsigned long size; // Size of file to write
@@ -88,23 +116,31 @@ void recv_file(int socket, char* filename) {
     // Receive all bytes
     while((rc > 0) && (count < size)) {
         // Receive bytes
-        printf("Reading socket for next file part...\n");
+        //printf("Reading socket for next file part...\n");
         rc = read(socket, buffer, BUF_SIZE);
         count += rc;
-        printf("Read socket for next file part.\n");
+        //printf("Read socket for next file part.\n");
 
         // Write to file
-        printf("Writing file part...\n");
+        //printf("Writing file part...\n");
         sz = write(of, buffer, rc);
-        printf("Wrote file part.\n");
+        //printf("Wrote file part.\n");
 
         // Clear buffer
         memset(buffer, 0, BUF_SIZE);
+
+        // Update progress bar
+        update_progress(count, size);
+
+#ifdef DEBUG
+        usleep(100);
+#endif
     }
 
     // Done
     close(of);
-    printf("Received file:\n");
+    fflush(stdout);
+    printf("\nReceived file.\n");
 
 #ifdef DEBUG
     char *parmList[] ={ "sudo cat", destination, NULL};
