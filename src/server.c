@@ -70,14 +70,12 @@ void send_file(int sock, char filename[ NAME_SIZE ]) {
         // Get file name stat
         stat(filename, &filestat);
 
-        sprintf(filesize, "%lu", (unsigned long) filestat.st_size);
+        sprintf(filesize, "%lu%s", (unsigned long) filestat.st_size, COMMAND_SEPARATOR);
 
         printf("File has size %lu.\n", (unsigned long) filestat.st_size);
 
-        // Send file size
-        send(sock, filesize, strlen(filesize) , 0 );
-        // Ensure command ending
-        send(sock, COMMAND_SEPARATOR, strlen(COMMAND_SEPARATOR) , 0 );
+        // Send file size / ensure command ending
+        send(sock, filesize, strlen(filesize) + strlen(COMMAND_SEPARATOR), 0 );
 
         // Open file for reading
         int ifile;
@@ -93,11 +91,11 @@ void send_file(int sock, char filename[ NAME_SIZE ]) {
     else { // File doesn't exist, send tokens
         printf("File not found, notifying client.\n");
 
-        // Also send FILE_NOT_FOUND_MSG
-        send(sock, FILE_NOT_FOUND_MSG, strlen(FILE_NOT_FOUND_MSG) , 0 );
+        char msg[ NAME_SIZE ] = { 0 };
+        sprintf(msg, "%s%s", FILE_NOT_FOUND_MSG, COMMAND_SEPARATOR);
 
-        // Ensure command ending
-        send(sock, COMMAND_SEPARATOR, strlen(COMMAND_SEPARATOR) , 0 );
+        // Also send FILE_NOT_FOUND_MSG with command separator
+        send(sock, msg, strlen(msg) , 0 );
    }
 }
 
@@ -183,6 +181,12 @@ void receive_request(int sockfd) {
 
     // Tokenize by newline
     filetoken = strtok(buffer, COMMAND_SEPARATOR);
+    if (filetoken == NULL) {
+        // Close the socket if file not found received artifact
+        close(sockfd);
+        FD_CLR(sockfd, &read_fds);
+        return;
+    }
     DIE(filetoken == NULL, "Null token in received message (strtok)");
 
     if (strcmp(filetoken, CLOSE_MESSAGE) == 0) {

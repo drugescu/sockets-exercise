@@ -91,11 +91,15 @@ void recv_file(int socket, char* filename) {
     // Check if file exists
     if (strcmp(sztoken, FILE_NOT_FOUND_MSG) == 0) {
         printf("Server reports: \"%s\".\n", sztoken);
+        // Done
+        close(of);
     }
     else { // If file exists
         // Get file size
         size = strtoul(sztoken, &ptr, 10);
-        count = rc - strlen(sztoken) - 1;  // Don't forget the separator
+        // Subtract the command and the separator from the received count
+        count = rc - strlen(sztoken) - strlen(COMMAND_SEPARATOR) - 1;
+
         DIE(size == 0, "File size is zero.\n");
 
         printf("File size is %lu.\n", size);
@@ -110,7 +114,8 @@ void recv_file(int socket, char* filename) {
         // Initial packet might have sent us a bit of the file
         if (count > 0) {
             char *trimmed_buffer;
-            trimmed_buffer = buffer + strlen(sztoken);
+            trimmed_buffer = buffer + strlen(sztoken) + 2;
+
             printf("Writing file part (initial)...\n");
             sz = write(of, trimmed_buffer, count);
             printf("Wrote file part (initial).\n");
@@ -140,6 +145,8 @@ void recv_file(int socket, char* filename) {
         }
 
         // Done
+        close(of);
+        fflush(stdout);
         printf("\nReceived file.\n");
 
 #ifdef DEBUG
@@ -147,10 +154,6 @@ void recv_file(int socket, char* filename) {
         execv("/bin/cat", parmList);
 #endif
     }
-
-    // Done
-    close(of);
-    fflush(stdout);
 }
 
 void disconnect(int socket) {
