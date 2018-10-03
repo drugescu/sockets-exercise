@@ -30,6 +30,7 @@
 #include <time.h>
 #include <stdbool.h>
 #include <signal.h>
+#include <unistd.h>
 
 #include "map.h"
 
@@ -42,6 +43,7 @@
 #define MAX_CLIENTS         12
 
 #define CLOSE_MESSAGE       "[REQUESTING_DISCONNECT]"
+#define FILE_NOT_FOUND_MSG  "File not found"
 
 #define COMMAND_SEPARATOR   "\t"
 

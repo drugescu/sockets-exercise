@@ -88,64 +88,69 @@ void recv_file(int socket, char* filename) {
     char *sztoken = NULL;
     sztoken = strtok(buffer, COMMAND_SEPARATOR);
 
-    size = strtoul(sztoken, &ptr, 10);
-    count = rc - strlen(sztoken) - 1;  // Don't forget the separator
-    DIE(size == 0, "File size is zero.\n");
-
-    printf("File size is %lu.\n", size);
-
-    // Create the new file
-    sprintf(destination, "received_%s", filename);
-    of = open(destination, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    DIE(of < 0, "Error in file creation.\n");
-
-    printf("Buffer contains:\n%s\n", buffer);
-
-    // Initial packet might have sent us a bit of the file
-    if (count > 0) {
-        char *trimmed_buffer;
-        trimmed_buffer = buffer + strlen(sztoken);
-        printf("Writing file part (initial)...\n");
-        sz = write(of, trimmed_buffer, count);
-        printf("Wrote file part (initial).\n");
-
-        // Clear buffer
-        memset(buffer, 0, BUF_SIZE);
+    // Check if file exists
+    if (strcmp(sztoken, FILE_NOT_FOUND_MSG) == 0) {
+        printf("Server reports: \"%s\".\n", sztoken);
     }
+    else { // If file exists
+        // Get file size
+        size = strtoul(sztoken, &ptr, 10);
+        count = rc - strlen(sztoken) - 1;  // Don't forget the separator
+        DIE(size == 0, "File size is zero.\n");
 
-    // Receive all bytes
-    while((rc > 0) && (count < size)) {
-        // Receive bytes
-        //printf("Reading socket for next file part...\n");
-        rc = read(socket, buffer, BUF_SIZE);
-        count += rc;
-        //printf("Read socket for next file part.\n");
+        printf("File size is %lu.\n", size);
 
-        // Write to file
-        //printf("Writing file part...\n");
-        sz = write(of, buffer, rc);
-        //printf("Wrote file part.\n");
+        // Create the new file
+        sprintf(destination, "received_%s", filename);
+        of = open(destination, O_CREAT | O_RDWR | O_TRUNC, 0644);
+        DIE(of < 0, "Error in file creation.\n");
 
-        // Clear buffer
-        memset(buffer, 0, BUF_SIZE);
+        printf("Buffer contains:\n%s\n", buffer);
 
-        // Update progress bar
-        update_progress(count, size);
+        // Initial packet might have sent us a bit of the file
+        if (count > 0) {
+            char *trimmed_buffer;
+            trimmed_buffer = buffer + strlen(sztoken);
+            printf("Writing file part (initial)...\n");
+            sz = write(of, trimmed_buffer, count);
+            printf("Wrote file part (initial).\n");
+
+            // Clear buffer
+            memset(buffer, 0, BUF_SIZE);
+        }
+
+        // Receive all bytes
+        while((rc > 0) && (count < size)) {
+            // Receive bytes
+            rc = read(socket, buffer, BUF_SIZE);
+            count += rc;
+
+            // Write to file
+            sz = write(of, buffer, rc);
+
+            // Clear buffer
+            memset(buffer, 0, BUF_SIZE);
+
+            // Update progress bar
+            update_progress(count, size);
 
 #ifdef DEBUG
-        usleep(100);
+            usleep(100);
+#endif
+        }
+
+        // Done
+        printf("\nReceived file.\n");
+
+#ifdef DEBUG
+        char *parmList[] ={ "sudo cat", destination, NULL};
+        execv("/bin/cat", parmList);
 #endif
     }
 
     // Done
     close(of);
     fflush(stdout);
-    printf("\nReceived file.\n");
-
-#ifdef DEBUG
-    char *parmList[] ={ "sudo cat", destination, NULL};
-    execv("/bin/cat", parmList);
-#endif
 }
 
 void disconnect(int socket) {

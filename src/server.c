@@ -65,28 +65,40 @@ void send_file(int sock, char filename[ NAME_SIZE ]) {
     struct stat filestat;
     char filesize[ NAME_SIZE ] = { 0 };
 
-    // Get file name stat
-    stat(filename, &filestat);
+    // Check if file exists
+    if (access(filename, F_OK) != -1) { // File exists, send
+        // Get file name stat
+        stat(filename, &filestat);
 
-    sprintf(filesize, "%lu", (unsigned long) filestat.st_size);
+        sprintf(filesize, "%lu", (unsigned long) filestat.st_size);
 
-    printf("File has size %lu.\n", (unsigned long) filestat.st_size);
+        printf("File has size %lu.\n", (unsigned long) filestat.st_size);
 
-    // Send file size
-    send(sock, filesize, strlen(filesize) , 0 );
-    // Endure command ending
-    send(sock, COMMAND_SEPARATOR, strlen(COMMAND_SEPARATOR) , 0 );
+        // Send file size
+        send(sock, filesize, strlen(filesize) , 0 );
+        // Ensure command ending
+        send(sock, COMMAND_SEPARATOR, strlen(COMMAND_SEPARATOR) , 0 );
 
-    // Open file for reading
-    int ifile;
-    ifile = open(filename, O_RDONLY);
+        // Open file for reading
+        int ifile;
+        ifile = open(filename, O_RDONLY);
 
-    // Now send file
-    int rc;
-    rc = sendfile(sock, ifile, NULL, (unsigned long) filestat.st_size);
-    DIE(rc == -1, "Send file error.");
+        // Now send file
+        int rc;
+        rc = sendfile(sock, ifile, NULL, (unsigned long) filestat.st_size);
+        DIE(rc == -1, "Send file error.");
 
-    printf("File has been sent.\n");
+        printf("File has been sent.\n");
+    }
+    else { // File doesn't exist, send tokens
+        printf("File not found, notifying client.\n");
+
+        // Also send FILE_NOT_FOUND_MSG
+        send(sock, FILE_NOT_FOUND_MSG, strlen(FILE_NOT_FOUND_MSG) , 0 );
+
+        // Ensure command ending
+        send(sock, COMMAND_SEPARATOR, strlen(COMMAND_SEPARATOR) , 0 );
+   }
 }
 
 // Establish new connection with client on socket sockfd
